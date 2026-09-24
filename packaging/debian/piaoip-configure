@@ -1,0 +1,61 @@
+#!/usr/bin/python3
+"""Configure the installed PiAoIP service without changing OS network addresses."""
+import argparse
+import ipaddress
+import os
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--interface', help='wired interface name, or auto')
+    parser.add_argument('--peer', help='Windows Ethernet IPv4 address (required on first installation)')
+    parser.add_argument('--show', action='store_true')
+    parser.add_argument('--restart', action='store_true')
+    args = parser.parse_args()
+    path = Path('/etc/piaoip/peer.conf')
+    if args.show or (args.interface is None and args.peer is None and not args.restart):
+        print(path.read_text())
+        return
+    if os.geteuid() != 0:
+        parser.error('run with sudo to change the service configuration')
+    values = {'PIAOIP_INTERFACE': '', 'PIAOIP_PEER': 'configure-me'}
+    for line in path.read_text().splitlines():
+        key, sep, value = line.partition('=')
+        if sep and key in values:
+            values[key] = value.strip()
+    if args.interface is not None:
+        interface = '' if args.interface == 'auto' else args.interface
+        if interface and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,15}', interface):
+            parser.error('invalid interface name')
+        values['PIAOIP_INTERFACE'] = interface
+    if args.peer is not None:
+        try:
+            peer = str(ipaddress.IPv4Address(args.peer))
+        except ValueError:
+            parser.error('--peer must be the Windows Ethernet IPv4 address')
+        values['PIAOIP_PEER'] = peer
+    if args.peer is not None or args.interface is not None:
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, prefix='.peer-', delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write('# Managed by piaoip-configure; OS addressing is unchanged.\n')
+                stream.writelines(f'{key}={value}\n' for key, value in values.items())
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.chmod(0o644)
+            temporary.replace(path)
+        finally:
+            if temporary and temporary.exists():
+                temporary.unlink()
+        print(f'Saved {path}')
+    if args.restart:
+        subprocess.run(['systemctl', 'restart', 'pi-aoip.service'], check=True)
+    else:
+        print('Apply with: sudo systemctl restart pi-aoip.service')
+
+if __name__ == '__main__':
+    main()

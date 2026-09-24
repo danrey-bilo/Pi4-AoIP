@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+find_dependency(AoIP 2.1 CONFIG)
+include("${CMAKE_CURRENT_LIST_DIR}/Pi4AoIPTargets.cmake")
+if(NOT TARGET PiAoIP::rpi4)
+  add_library(PiAoIP::rpi4 ALIAS Pi4AoIP::platform)
+endif()
+check_required_components(Pi4AoIP)

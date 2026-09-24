@@ -1,0 +1,27 @@
+#!/bin/sh
+set -u
+if [ -r /etc/piaoip/peer.conf ]; then
+  set -a
+  . /etc/piaoip/peer.conf
+  set +a
+fi
+/usr/lib/piaoip/aoip_peer_rpi4 --check
+result=$?
+systemctl --no-pager show pi-aoip.service -p ActiveState -p MainPID -p CPUAffinity -p FragmentPath
+if ! systemctl is-active --quiet pi-aoip.service; then
+  echo 'PiAoIP service is not active; inspect journalctl -u pi-aoip.service -b' >&2
+  result=3
+fi
+pid=$(systemctl show --value -p MainPID pi-aoip.service)
+case "$pid" in
+  ''|0|*[!0-9]*) ;;
+  *)
+    for status in /proc/"$pid"/task/*/status; do
+      printf '%s ' "$status"
+      mask=$(awk '/Cpus_allowed_list/ {print $2}' "$status")
+      printf '%s\n' "$mask"
+      case "$mask" in 0|1|0-1|0,1) ;; *) echo 'Unexpected CPU affinity' >&2; result=3 ;; esac
+    done
+    ;;
+esac
+exit "$result"

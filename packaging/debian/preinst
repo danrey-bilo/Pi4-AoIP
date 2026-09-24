@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  install|upgrade)
+    # Only masks created by deb-systemd-helper are removed; user masks remain.
+    if command -v deb-systemd-helper >/dev/null; then
+      deb-systemd-helper unmask pi-aoip.service >/dev/null || true
+    fi
+    local_unit=/etc/systemd/system/pi-aoip.service
+    backup=/var/lib/piaoip/legacy-2.1
+    if [ -e "$local_unit" ]; then
+      if [ -L "$local_unit" ] || ! grep -q '^ExecStart=/home/admin/aoip_peer pi ' "$local_unit"; then
+        echo 'A custom /etc/systemd/system/pi-aoip.service overrides the packaged service.' >&2
+        echo 'Back it up and move it aside before installation; no custom unit was changed.' >&2
+        exit 1
+      fi
+      install -d -m 0700 "$backup"
+      if [ -e "$backup/pi-aoip.service" ] && ! cmp -s "$local_unit" "$backup/pi-aoip.service"; then
+        echo 'Legacy backup already exists; refusing to overwrite it.' >&2
+        exit 1
+      fi
+      if [ -d /run/systemd/system ]; then systemctl stop pi-aoip.service; fi
+      cp -p "$local_unit" "$backup/pi-aoip.service"
+      if [ -f /home/admin/aoip-profile.txt ] && [ ! -e /var/lib/piaoip/profile.txt ]; then
+        cp /home/admin/aoip-profile.txt /var/lib/piaoip/profile.txt
+      fi
+      rm -- "$local_unit"
+      : > "$backup/migration-pending"
+    fi
+    if [ "$1" = install ]; then
+      install -d -m 0700 -o root -g root /var/lib/piaoip-package
+      : > /var/lib/piaoip-package/start-after-install
+    fi
+    ;;
+esac

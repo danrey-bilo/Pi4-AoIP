@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+if [ "${1:-}" = configure ]; then
+  if ! getent passwd piaoip >/dev/null; then
+    adduser --system --group --home /var/lib/piaoip --no-create-home piaoip
+  fi
+  install -d -m 0750 -o piaoip -g piaoip /var/lib/piaoip
+  if [ ! -e /var/lib/piaoip/profile.txt ]; then
+    install -m 0600 -o piaoip -g piaoip /usr/share/piaoip/default-profile.txt /var/lib/piaoip/profile.txt
+  else
+    chown --no-dereference piaoip:piaoip /var/lib/piaoip/profile.txt
+  fi
+  deb-systemd-helper unmask pi-aoip.service >/dev/null || true
+  if deb-systemd-helper --quiet was-enabled pi-aoip.service; then
+    deb-systemd-helper enable pi-aoip.service >/dev/null || true
+  else
+    deb-systemd-helper update-state pi-aoip.service >/dev/null || true
+  fi
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    if [ -z "${2:-}" ] || [ -f /var/lib/piaoip-package/start-after-install ]; then
+      deb-systemd-invoke start pi-aoip.service || true
+    else
+      deb-systemd-invoke try-restart pi-aoip.service || true
+    fi
+  fi
+  rm -f -- /var/lib/piaoip/legacy-2.1/migration-pending
+  rm -f -- /var/lib/piaoip-package/start-after-install
+  echo 'PiAoIP installed. Check: piaoip-doctor'
+  echo 'Configure before audio: sudo piaoip-configure --interface eth0 --peer WINDOWS_IP --restart'
+fi
