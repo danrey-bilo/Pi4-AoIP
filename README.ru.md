@@ -8,7 +8,7 @@
 **PREEMPT_RT**. Выбирает проводной интерфейс, назначает CPU сетевым потокам
 и запускает общий runtime из AoIP-lib. Устанавливается пакетом `.deb`.
 
-**[Начало работы](docs/BUILD.md)** · **[Архитектура](docs/ARCHITECTURE.md)** · **[Техническое описание](docs/TECHNICAL.md)** · **[Проверки](docs/TESTING.md)** · **[Лицензия](docs/LICENSE-RU.md)**
+**[Начало работы](docs/BUILD.md)** · **[Архитектура](docs/ARCHITECTURE.md)** · **[Техническое описание](docs/TECHNICAL.md)** · **[Проверки](https://github.com/danrey-bilo/AoIP-debug-tool/blob/main/docs/pi4/TESTING.md)** · **[Лицензия](docs/LICENSE-RU.md)**
 
 ## Назначение
 
@@ -18,7 +18,6 @@
 | `aoip_peer_rpi4` | Запуск общего синтетического PCM peer с политикой платы |
 | `pi-aoip.service` | Отдельный пользователь, лимиты RT, состояние и автозапуск |
 | `piaoip-configure` | Настройка интерфейса и IPv4 компьютера |
-| `piaoip-doctor` | Проверка окружения, состояния и фактических CPU affinity |
 
 ## Распределение CPU
 
@@ -40,16 +39,15 @@ flowchart LR
 ```sh
 git clone --recurse-submodules https://github.com/danrey-bilo/Pi4-AoIP.git
 cd Pi4-AoIP
-sudo apt install build-essential cmake dpkg-dev
-taskset -c 0,1 sh packaging/debian/build-deb.sh
-sudo apt install ./dist/piaoip-rpi4_2.1.0-1_arm64.deb
-sudo piaoip-configure --interface eth0 --peer 192.168.50.1 --restart
-piaoip-doctor
+sudo apt install build-essential cmake
+taskset -c 0,1 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+taskset -c 0,1 cmake --build build --parallel 2
+./build/bin/aoip_peer_rpi4 --check
 ```
 
-В `--peer` укажите **Ethernet IPv4 своего Windows-ПК**; адрес выше — пример.
-До первой настройки служба завершается с подсказкой. Пакет не устанавливает
-RT-ядро и не меняет адреса ОС. [Полная инструкция](docs/BUILD.md).
+Собираются библиотека платформы и служба. Установка и Ethernet-настройка
+описаны в [полной инструкции](docs/BUILD.md). Пакет не устанавливает
+RT-ядро и не меняет адреса ОС.
 
 ## Структура
 
@@ -58,9 +56,6 @@ include/aoip/rpi4.hpp   API платформы
 src/rpi4.cpp           модель, RT, Ethernet и политика потоков
 apps/main.cpp          запуск с политикой платы
 external/AoIP-lib/     зависимость, закреплённая git submodule
-packaging/debian/      systemd, конфигурация, DEB и lifecycle scripts
-tools/                 измерение загрузки CPU
-tests/                 установленный SDK и жизненный цикл пакета
 docs/                  API, установка и архитектура
 ```
 
@@ -68,6 +63,12 @@ docs/                  API, установка и архитектура
 
 Готовый peer пока генерирует синтетический PCM и проверяет обратный поток.
 Драйвер физического ADC/DAC и обработка эффектов здесь ещё не реализованы.
+
+## Средства разработки
+
+Тесты, запускаемые примеры, диагностика и скрипты сборки установщиков находятся
+в закрытом [AoIP-debug-tool](https://github.com/danrey-bilo/AoIP-debug-tool) для разработчиков проекта.
+Они не входят в библиотеку и не нужны для её сборки.
 
 ## Компоненты проекта
 

@@ -21,13 +21,12 @@ clone выполните `git submodule update --init --recursive`. Для пр�
 Обновление зависимости: выберите проверенный commit внутри submodule и
 закоммитьте новый gitlink в родительском репозитории.
 
-## Сборка и тесты
+## Сборка библиотеки и службы
 
 ```sh
 sudo apt install build-essential cmake dpkg-dev
-taskset -c 0,1 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DAOIP_BUILD_TESTS=ON
+taskset -c 0,1 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 taskset -c 0,1 cmake --build build --parallel 2
-taskset -c 0,1 ctest --test-dir build --output-on-failure --timeout 30
 ./build/bin/aoip_peer_rpi4 --check
 ```
 
@@ -37,11 +36,15 @@ taskset -c 0,1 ctest --test-dir build --output-on-failure --timeout 30
 
 ## DEB
 
+Скрипты создания пакетов находятся в закрытом
+[AoIP-debug-tool](https://github.com/danrey-bilo/AoIP-debug-tool/blob/main/docs/BUILD.md).
+Основная CMake-сборка не зависит от них. Для установки скопируйте полученный DEB
+в текущий каталог Pi:
+
 ```sh
-taskset -c 0,1 sh packaging/debian/build-deb.sh
-sudo apt install ./dist/piaoip-rpi4_2.1.0-1_arm64.deb
+sudo apt install ./piaoip-rpi4_2.1.0-1_arm64.deb
 sudo piaoip-configure --interface eth0 --peer 192.168.50.1 --restart
-piaoip-doctor
+/usr/lib/piaoip/aoip_peer_rpi4 --check
 systemctl status pi-aoip.service --no-pager
 ```
 
@@ -69,7 +72,7 @@ RX: CPU0/FIFO70; TX: CPU1/FIFO70; control/reporter: CPU1/SCHED_OTHER.
 ## Обновление и удаление
 
 ```sh
-sudo apt install ./dist/piaoip-rpi4_2.1.0-1_arm64.deb
+sudo apt install ./piaoip-rpi4_2.1.0-1_arm64.deb
 sudo apt remove piaoip-rpi4
 ```
 
@@ -94,3 +97,9 @@ target_link_libraries(my_service PRIVATE Pi4AoIP::platform)
 Пакет `piaoip-sdk` необязателен для работающей службы. Он содержит архивы общего
 AoIP и платформы, заголовки, CMake exports и лицензии. Используйте совместимый
 Debian 13 ARM64 toolchain. [Публичный API](API.md).
+
+## Проверки разработчика
+
+Тесты SDK, жизненного цикла пакета и утилита `piaoip-doctor` перенесены в
+[AoIP-debug-tool](https://github.com/danrey-bilo/AoIP-debug-tool/blob/main/docs/pi4/TESTING.md).
+Они не входят в библиотеку или пользовательский DEB.

@@ -32,7 +32,7 @@ receiver.join();
 | `find_wired_endpoint(name, endpoint, error)` | Выбирает один активный физический Ethernet IPv4; пустое имя означает автоматический выбор; исключает Wi-Fi и неоднозначный выбор |
 
 Для FIFO70 необходим `LimitRTPRIO=80` у systemd-службы. Пример готовой службы
-в `packaging/debian/pi-aoip.service`. Она использует отдельного пользователя
+в [pi-aoip.service](https://github.com/danrey-bilo/AoIP-debug-tool/blob/main/packaging/debian/pi-aoip.service) закрытого репозитория разработчиков. Она использует отдельного пользователя
 `piaoip`, `CPUAffinity=0 1` и каталог состояния `/var/lib/piaoip`.
 Библиотека не меняет настройки IRQ, boot cmdline, сеть, Wi-Fi, Bluetooth, USB или
 GPIO. Ограничение касается потоков PiAoIP; распределение системных IRQ задаётся ОС.
