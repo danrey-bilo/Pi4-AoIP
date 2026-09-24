@@ -2,23 +2,26 @@
 
 # Pi4-AoIP
 
-Платформенная библиотека и служба AoIP для **Raspberry Pi 4 Model B** с
-**PREEMPT_RT**. Выбирает проводной интерфейс, назначает CPU сетевым потокам
-и запускает общий runtime из AoIP-lib. Устанавливается пакетом `.deb`.
+**English** | [Русский](README.ru.md)
 
-**[Начало работы](docs/BUILD.md)** · **[Архитектура](docs/ARCHITECTURE.md)** · **[Техническое описание](docs/TECHNICAL.md)** · **[Проверки](docs/TESTING.md)** · **[Лицензия](docs/LICENSE-RU.md)**
+An AoIP platform library and service for **Raspberry Pi 4 Model B** running
+**PREEMPT_RT**. It selects the wired interface, assigns network threads to
+CPU cores and starts the shared runtime from AoIP-lib. Installation uses a
+Debian `.deb` package.
 
-## Назначение
+**[Getting started](#quick-start)** · **[CPU allocation](#cpu-allocation)** · **[Documentation](#documentation)** · **[License](LICENSE)**
 
-| Компонент | Что делает |
+## Components
+
+| Component | Purpose |
 |---|---|
-| `Pi4AoIP::platform` | Проверка Pi 4/RT, Ethernet IPv4, привязка потоков |
-| `aoip_peer_rpi4` | Запуск общего синтетического PCM peer с политикой платы |
-| `pi-aoip.service` | Отдельный пользователь, лимиты RT, состояние и автозапуск |
-| `piaoip-configure` | Настройка интерфейса и IPv4 компьютера |
-| `piaoip-doctor` | Проверка окружения, состояния и фактических CPU affinity |
+| `Pi4AoIP::platform` | Pi 4/RT checks, Ethernet IPv4 selection and thread affinity |
+| `aoip_peer_rpi4` | Runs the shared synthetic PCM peer with the board's scheduling policy |
+| `pi-aoip.service` | Dedicated user, RT limits, persistent state and automatic startup |
+| `piaoip-configure` | Configures the interface and the computer's IPv4 address |
+| `piaoip-doctor` | Checks the environment, service state and actual CPU affinity |
 
-## Распределение CPU
+## CPU allocation
 
 ```mermaid
 flowchart LR
@@ -28,12 +31,14 @@ flowchart LR
   FX[CPU2 + CPU3: reserved for effects]
 ```
 
-Сеть использует только **CPU0/CPU1**. CPU2/CPU3 оставлены для эффектов.
-Библиотека не перенастраивает IRQ, Wi-Fi, Bluetooth, USB, GPIO или governor.
+Networking uses **CPU0/CPU1** only. CPU2/CPU3 are reserved for effects.
+The library does not reconfigure IRQs, Wi-Fi, Bluetooth, USB, GPIO or the CPU
+frequency governor.
 
-## Быстрый старт
+## Quick start
 
-Нужны Pi 4, Debian 13 ARM64, уже установленное RT-ядро и проводной Gigabit Ethernet.
+Requires a Pi 4, Debian 13 ARM64, an RT kernel already installed and wired
+Gigabit Ethernet.
 
 ```sh
 git clone --recurse-submodules https://github.com/danrey-bilo/Pi4-AoIP.git
@@ -45,35 +50,51 @@ sudo piaoip-configure --interface eth0 --peer 192.168.50.1 --restart
 piaoip-doctor
 ```
 
-В `--peer` укажите **Ethernet IPv4 своего Windows-ПК**; адрес выше — пример.
-До первой настройки служба завершается с подсказкой. Пакет не устанавливает
-RT-ядро и не меняет адреса ОС. [Полная инструкция](docs/BUILD.md).
+Set `--peer` to **your Windows computer's Ethernet IPv4 address**; the address
+above is an example. Until configured, the service exits with setup guidance.
+The package does not install an RT kernel or change the operating system's
+IP addresses. See the [full installation guide (Russian)](docs/BUILD.md).
 
-## Структура
+## Repository layout
 
 ```text
-include/aoip/rpi4.hpp   API платформы
-src/rpi4.cpp           модель, RT, Ethernet и политика потоков
-apps/main.cpp          запуск с политикой платы
-external/AoIP-lib/     зависимость, закреплённая git submodule
-packaging/debian/      systemd, конфигурация, DEB и lifecycle scripts
-tools/                 измерение загрузки CPU
-tests/                 установленный SDK и жизненный цикл пакета
-docs/                  API, установка и архитектура
+include/aoip/rpi4.hpp   public platform API
+src/rpi4.cpp           board model, RT, Ethernet and thread policy
+apps/main.cpp          startup with the board's scheduling policy
+external/AoIP-lib/     dependency pinned as a Git submodule
+packaging/debian/      systemd, configuration, DEB and lifecycle scripts
+tools/                 CPU usage measurements
+tests/                 installed SDK and package lifecycle checks
+docs/                  API, installation and architecture
 ```
 
-**[API платформы](docs/API.md)** · **[Установка и восстановление](docs/BUILD.md)**
+The supplied peer currently generates synthetic PCM and checks the return
+stream. A physical ADC/DAC driver and effects processing are not implemented
+in this project yet.
 
-Готовый peer пока генерирует синтетический PCM и проверяет обратный поток.
-Драйвер физического ADC/DAC и обработка эффектов здесь ещё не реализованы.
+## Documentation
 
-## Компоненты проекта
+Detailed guides are currently available in Russian.
 
-| Репозиторий | Ответственность |
+| Guide | Contents |
 |---|---|
-| [AoIP-lib](https://github.com/danrey-bilo/AoIP-lib) | Протокол, PCM, очереди, временной буфер, UDP peer |
-| [Pi4-AoIP](https://github.com/danrey-bilo/Pi4-AoIP) | Raspberry Pi 4, PREEMPT_RT, Ethernet, CPU0/CPU1, systemd и DEB |
-| [Win11-asio-AoIP](https://github.com/danrey-bilo/Win11-asio-AoIP) | ASIO DLL, сетевые потоки Windows, панель настройки и MSI |
+| [Build, installation and recovery](docs/BUILD.md) | Dependencies, DEB packages, configuration and updates |
+| [Platform API](docs/API.md) | Integrating `Pi4AoIP::platform` into your application |
+| [Architecture](docs/ARCHITECTURE.md) | Platform boundaries, service startup and thread placement |
+| [Technical overview](docs/TECHNICAL.md) | Transport characteristics and operating limits |
+| [Testing](docs/TESTING.md) | Test procedure and measurement scope |
+| [Build validation](docs/BUILD-VALIDATION.md) | Checks performed on the separated repository |
 
-Личное некоммерческое использование бесплатно. Для коммерческого использования
-требуется отдельная платная лицензия. [Условия](LICENSE) · [Пояснение](docs/LICENSE-RU.md).
+## Related projects
+
+| Repository | Responsibility |
+|---|---|
+| [AoIP-lib](https://github.com/danrey-bilo/AoIP-lib) | Protocol, PCM, queues, timeline buffering and UDP peer |
+| [Pi4-AoIP](https://github.com/danrey-bilo/Pi4-AoIP) | Raspberry Pi 4, PREEMPT_RT, Ethernet, CPU0/CPU1, systemd and DEB |
+| [Win11-asio-AoIP](https://github.com/danrey-bilo/Win11-asio-AoIP) | ASIO DLL, Windows network threads, settings panel and MSI |
+
+## License
+
+Personal, noncommercial use is free. Commercial use requires a separate paid
+written license from the copyright holder. See the [license terms](LICENSE)
+or the [Russian explanation](docs/LICENSE-RU.md).
